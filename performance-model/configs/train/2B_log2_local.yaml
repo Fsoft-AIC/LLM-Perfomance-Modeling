@@ -1,0 +1,107 @@
+global:
+  username: minhkhoi1026
+  project_name: performance-modeling
+  run_name: codegen2B-log2-1donly
+  save_dir: local
+  temp_dir: /tmp
+  SEED: 2610
+  resume: Null
+dataset:
+  train:
+    name: LocalCodeDataset
+    args:
+      data_path: local/processed_data/with_input_size/with_input_size/opencl_train_concat_reduced.jsonl
+      max_seq_len: 2048
+      output_scale: log2
+  val:
+    name: LocalCodeDataset
+    args:
+      data_path: local/processed_data/with_input_size/with_input_size/opencl_val_concat_reduced.jsonl
+      max_seq_len: 2048
+      output_scale: log2
+data_loader:
+  train:
+    args:
+      batch_size: 1
+      num_workers: 16
+      shuffle: True
+  val:
+    args:
+      batch_size: 1
+      num_workers: 16
+      shuffle: False
+tokenizer:
+  args:
+    pretrained_model_name_or_path: Salesforce/codegen-2B-multi
+    trust_remote_code: True
+model:
+  name: CodeGenLightningModel
+  base_model: Salesforce/codegen-2B-multi
+  max_seq_len: 2048
+  output_scale: log2
+metric:
+  - name: MeanAbsolutePercentageError
+    args:
+# lora:
+#   qlora: False
+#   r: 4
+#   alpha: 16
+#   layers:
+#     - qkv_proj
+#     - out_proj
+#     - fc_in
+#     - fc_out
+#   dropout: 0.01
+trainer:
+  num_epochs: 1000
+  accelerator: gpu
+  devices: 4
+  strategy: deepspeed_stage_2
+  accumulate_grad_batches: 16 # run K batchs of N samples before backward
+  evaluate_interval: 1 # epoch
+  log_interval: 20 # step
+  precision: 16
+  debug: False
+  num_worker: 16
+optimizer:
+  name: TorchAdamW
+  args:
+    lr: 0.000001
+# lr_scheduler:
+#   name: ReduceOnPlateau
+#   monitor: val/loss
+#   interval: epoch
+#   args:
+#     mode: min
+#     factor: 0.3
+#     patience: 4
+#     min_lr: 0.0000001
+lr_scheduler:
+  name: Warmup
+  frequency: 1
+  interval: step
+  args:
+    num_warmup_steps: 1000
+    num_training_steps: 1000000
+callbacks:
+  - name: ModelCheckpoint
+    args:
+      filename: "codegen2B-log2-1donlyd-epoch={epoch}-val_mape={val/MAPE:.4f}-val_loss={val/loss:.4f}"
+      monitor: "val/MAPE"
+      verbose: True
+      save_top_k: 3
+      mode: min
+      auto_insert_metric_name: False #https://github.com/Lightning-AI/lightning/issues/4012
+  - name: LearningRateMonitor
+    args:
+      logging_interval: step
+  - name: EarlyStopping
+    args:
+      monitor: "val/loss"
+      min_delta: 0.00001
+      patience: 15
+      verbose: False
+      mode: min
+  # - name: ModelSummary
+  #   args:
+  #     max_depth: 1

@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  cldrive:
+    image: ghcr.io/minhkhoi1026/performance-modeling/clang-tool:latest
+    tty: true
+    ipc: host
+    volumes:
+      - type: bind
+        source: ./insert-mem-hook
+        target: /home/clang-llvm/llvm-project/clang-tools-extra/insert-mem-hook
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # that's the closest analogue to --gpus; provide
+              # an integer amount of devices or 'all'
+              count: all
+              # Devices are reserved using a list of capabilities, making
+              # capabilities the only required field. A device MUST 
+              # satisfy all the requested capabilities for a successful 
+              # reservation.
+              capabilities: [ gpu ]

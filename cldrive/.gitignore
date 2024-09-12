@@ -1,0 +1,6 @@
+cldrive.log
+mem-analysis/
+full_cldrive.csv
+local/
+*.egg-info/
+docker_data/

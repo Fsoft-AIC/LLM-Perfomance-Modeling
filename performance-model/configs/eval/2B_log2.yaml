@@ -1,0 +1,36 @@
+global:
+  username: <your-wandb-username>
+  project_name: performance-modeling
+  run_name: codegen2B-log10-kmean_org
+  save_dir: <your-save-dir>
+  temp_dir: <your-temp-dir> # usually /tmp
+  SEED: 2610
+  checkpoint: local/performance-modeling/6zi34dlh/checkpoints/checkpoint.ckpt
+dataset:
+  test:
+    name: HFCodeDataset
+    args:
+      dataset: minhkhoi1026/opencl-llmperf
+      subset: benchmark-rodinia-bfs
+      split: org
+      max_seq_len: 2048
+      output_scale: log2
+data_loader:
+  test:
+    args:
+      batch_size: 4
+      num_workers: 4
+      shuffle: False
+tokenizer:
+  args:
+    pretrained_model_name_or_path: Salesforce/codegen-2B-multi
+    trust_remote_code: True
+model:
+  name: CodeGenLightningModel
+metric:
+  - name: MeanAbsolutePercentageError
+    args:
+trainer:
+  accelerator: gpu
+  devices: # currently should use only one devices due to DistributedSampler
+    - 0

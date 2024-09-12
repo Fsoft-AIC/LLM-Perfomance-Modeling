@@ -1,0 +1,44 @@
+#!/bin/bash
+
+function install_apt_deps()
+{
+    echo "-- Installing all apt dependencies"
+    sudo apt-get update
+    sudo apt install software-properties-common
+    sudo add-apt-repository ppa:deadsnakes/ppa
+    sudo apt-get update
+
+    export DEBIAN_FRONTEND=noninteractive 
+    export TZ=Etc/UTC
+
+    sudo -E apt-get install -y \
+    build-essential \
+    net-tools \
+    ca-certificates \
+    curl \
+    cmake \
+    ninja-build \
+    tmux \
+    git \
+    wget \
+    gcc \
+    g++ \
+    tar \
+
+    # install python dependencies
+    sudo apt update
+    sudo -E apt install -y build-essential libssl-dev zlib1g-dev \
+        libbz2-dev libreadline-dev libsqlite3-dev curl \
+        libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+    
+    # curl https://pyenv.run | bash
+    # echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
+    # echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
+    # echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+
+    # $HOME/.pyenv/bin/pyenv install -s 3.8.15
+    # $HOME/.pyenv/bin/pyenv  global 3.8.15
+}
+
+
+install_apt_deps

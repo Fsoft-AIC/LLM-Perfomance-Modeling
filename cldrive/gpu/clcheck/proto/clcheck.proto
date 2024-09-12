@@ -1,0 +1,102 @@
+// Copyright (c) 2016-2020 Chris Cummins.
+// This file is part of clcheck.
+//
+// clcheck is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// clcheck is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with clcheck.  If not, see <https://www.gnu.org/licenses/>.
+
+syntax = "proto2";
+
+package gpu.clcheck;
+
+option go_package = "clcheckpb";
+option java_multiple_files = true;
+option java_outer_classname = "CldriveProto";
+option java_package = "com.gpu.clcheck";
+
+import "gpu/clinfo/proto/clinfo.proto";
+import "gpu/libcecl/proto/libcecl.proto";
+
+message CldriveInstances {
+  repeated CldriveInstance instance = 1;
+}
+
+message CldriveInstance {
+  optional gpu.clinfo.OpenClDevice device = 1;
+  optional string opencl_src = 2;
+  
+  repeated DynamicParams dynamic_params = 3;
+  optional int32 min_runs_per_kernel = 4;
+  // A string of options to pass to clBuildProgram(). One option,
+  // '-cl-kernel-arg-info', is always enabled. For other valid options, see:
+  // https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clBuildProgram.html
+  optional string build_opts = 5;
+  // Output fields:
+
+  enum InstanceOutcome {
+    UNKNOWN_ERROR = 0; // Default value is an error.
+    PASS = 1;
+    PROGRAM_COMPILATION_FAILURE = 2;
+    NO_KERNELS_IN_PROGRAM = 3;
+  }
+  optional InstanceOutcome outcome = 10;
+  repeated CldriveKernelInstance kernel = 11;
+  optional string mem_filepath = 12;
+}
+
+message CldriveKernelInstance {
+  repeated CldriveKernelRun run = 1;
+  // Per-work-item memory requirements of the kernel.
+  optional string name = 2;
+  enum KernelInstanceOutcome {
+    UNKNOWN_ERROR = 0; // Default error value.
+    PASS = 1;
+    NO_ARGUMENTS = 2;
+    NO_MUTABLE_ARGUMENTS = 3;
+    UNSUPPORTED_ARGUMENTS = 4;
+  }
+  optional KernelInstanceOutcome outcome = 3;
+  optional int64 work_item_local_mem_size_in_bytes = 4;
+  optional int64 work_item_private_mem_size_in_bytes = 5;
+  repeated int64 arg_array_bounds = 6;
+}
+
+message DynamicParams {
+  optional int32 global_size_x = 1;
+  optional int32 local_size_x = 2;
+}
+
+message CldriveKernelRun {
+  optional KernelRunOutcome outcome = 1;
+  repeated gpu.libcecl.OpenClKernelInvocation log = 2;
+  enum KernelRunOutcome {
+    // The default (uninitialized) value is an error.
+    UNKNOWN_ERROR = 0;
+    // The kernel run succeeded. This is the only outcome value which permits
+    // values in the CldriveKernelRun.log field.
+    PASS = 1;
+    // An OpenCL API call raised an error. The error code will be logged to
+    // stderr, but is not recorded here.
+    CL_ERROR = 2;
+    // The requested global or local size exceeds the device capabilities.
+    INVALID_DYNAMIC_PARAMS = 4;
+    // The kernel is determined to produce no output - i.e. it does not modify
+    // any of its argument values.
+    NO_OUTPUT = 5;
+    // The kernel is determined to be input insensitive - i.e. it produces the
+    // same values for different input values.
+    INPUT_INSENSITIVE = 6;
+    // The kernel is determined to be non-deterministic - i.e. it produces
+    // different values when run twice with the same input.
+    NONDETERMINISTIC = 7;
+  }
+}

@@ -1,0 +1,89 @@
+global:
+  username: <your-wandb-username>
+  project_name: performance-modeling
+  run_name: codegen2B-log2
+  save_dir: <your-save-dir>
+  temp_dir: <your-temp-dir> # usually /tmp
+  SEED: 2610
+  resume: Null # set this to the path of the checkpoint if you want to resume training
+dataset:
+  train:
+    name: HFCodeDataset
+    args:
+      dataset: minhkhoi1026/opencl-llmperf
+      subset: github-600k
+      split: train
+      max_seq_len: 2048
+      output_scale: log2
+  val:
+    name: HFCodeDataset
+    args:
+      dataset: minhkhoi1026/opencl-llmperf
+      subset: github-600k
+      split: validation
+      max_seq_len: 2048
+      output_scale: log2 # could be "log2", "log10", or "original"
+data_loader:
+  train:
+    args:
+      batch_size: 1
+      num_workers: 16
+      shuffle: True
+  val:
+    args:
+      batch_size: 1
+      num_workers: 16
+      shuffle: False
+tokenizer:
+  args:
+    pretrained_model_name_or_path: Salesforce/codegen-2B-multi # could be "codegen-350m-multi"
+    trust_remote_code: True
+model:
+  name: CodeGenLightningModel
+  base_model: Salesforce/codegen-2B-multi
+  max_seq_len: 2048
+  output_scale: log2 # must match dataset.output_scale
+metric:
+  - name: MeanAbsolutePercentageError
+    args:
+trainer:
+  num_epochs: 1000
+  accelerator: gpu
+  devices: 4
+  strategy: deepspeed_stage_2
+  accumulate_grad_batches: 16 # run K batchs of N samples before backward
+  evaluate_interval: 1 # epoch
+  log_interval: 20 # step
+  precision: 16
+  debug: False
+  num_worker: 16
+optimizer:
+  name: TorchAdamW
+  args:
+    lr: 0.000001
+lr_scheduler:
+  name: Warmup
+  frequency: 1
+  interval: step
+  args:
+    num_warmup_steps: 1000
+    num_training_steps: 1000000
+callbacks:
+  - name: ModelCheckpoint
+    args:
+      filename: "codegen2B-log2-1donlyd-epoch={epoch}-val_mape={val/MAPE:.4f}-val_loss={val/loss:.4f}"
+      monitor: "val/MAPE"
+      verbose: True
+      save_top_k: 1
+      mode: min
+      auto_insert_metric_name: False #https://github.com/Lightning-AI/lightning/issues/4012
+  - name: LearningRateMonitor
+    args:
+      logging_interval: step
+  - name: EarlyStopping
+    args:
+      monitor: "val/loss"
+      min_delta: 0.00001
+      patience: 15
+      verbose: False
+      mode: min
